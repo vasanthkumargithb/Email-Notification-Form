@@ -1,0 +1,26 @@
+[
+  {
+    "boardMember": "Yes",
+    "keyPersonnel": "No",
+    "designation": "Senior Manager",
+    "gender": "Male",
+    "din": "12345678",
+    "fullName": "vasanthkumar U",
+    "age": "28",
+    "nationality": "American",
+    "email": "vasuvasanthvasu4@gmail.com",
+    "mobile": "+1234567890"
+  },
+  {
+    "boardMember": "No",
+    "keyPersonnel": "Yes",
+    "designation": "Project Lead",
+    "gender": "Female",
+    "din": "87654321",
+    "fullName": "uwais",
+    "age": "35",
+    "nationality": "Indian",
+    "email": "uwaisloki99@gmail.com",
+    "mobile": "+1987654321"
+  }
+]
