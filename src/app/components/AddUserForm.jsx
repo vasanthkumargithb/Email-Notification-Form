@@ -48,10 +48,7 @@ export default function AddUserForm() {
       alert("Error fetching user data");
     }
   };
-  console.log("Service ID:", process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID);
-console.log("Template ID:", process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID);
-console.log("Public Key:", process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY);
-
+  
 
   const handleSubmit = () => {
     if (!formData.email) {
