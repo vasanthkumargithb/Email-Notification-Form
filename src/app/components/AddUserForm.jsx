@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import emailjs from "@emailjs/browser"; 
+import emailjs from "@emailjs/browser";
 
 export default function AddUserForm() {
   const [formData, setFormData] = useState({
-    boardMember: null,
-    keyPersonnel: null,
+    boardMember: "",
+    keyPersonnel: "",
     designation: "",
     gender: "",
     din: "",
@@ -16,6 +16,8 @@ export default function AddUserForm() {
     email: "",
     mobile: ""
   });
+
+  const [isFetched, setIsFetched] = useState(false);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -28,6 +30,28 @@ export default function AddUserForm() {
       return;
     }
 
+    // First, try to find user in localStorage
+    const storedUsers = JSON.parse(localStorage.getItem("users")) || [];
+    const foundUser = storedUsers.find((user) => user.din === formData.din);
+
+    if (foundUser) {
+      setFormData({
+        boardMember: foundUser.boardMember || "",
+        keyPersonnel: foundUser.keyPersonnel || "",
+        designation: foundUser.designation || "",
+        gender: foundUser.gender || "",
+        din: foundUser.din,
+        fullName: foundUser.fullName || "",
+        age: foundUser.age || "",
+        nationality: foundUser.nationality || "",
+        email: foundUser.email || "",
+        mobile: foundUser.mobile || ""
+      });
+      setIsFetched(true);
+      return; // stop here, user found in localStorage
+    }
+
+    // If not found in localStorage, fallback to /userData.json (optional)
     try {
       const response = await fetch("/userData.json");
       if (!response.ok) throw new Error("Failed to fetch user data");
@@ -36,54 +60,137 @@ export default function AddUserForm() {
       const matchedUser = users.find((user) => user.din === formData.din);
 
       if (matchedUser) {
-        setFormData((prev) => ({
-          ...prev,
-          ...matchedUser
-        }));
+        setFormData({
+          boardMember: matchedUser.boardMember || "",
+          keyPersonnel: matchedUser.keyPersonnel || "",
+          designation: matchedUser.designation || "",
+          gender: matchedUser.gender || "",
+          din: matchedUser.din,
+          fullName: matchedUser.fullName || "",
+          age: matchedUser.age || "",
+          nationality: matchedUser.nationality || "",
+          email: matchedUser.email || "",
+          mobile: matchedUser.mobile || ""
+        });
+        setIsFetched(true);
       } else {
-        alert("No user found with that DIN");
+        alert("User DIN not registered");
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
       alert("Error fetching user data");
     }
   };
-  
 
   const handleSubmit = () => {
+    if (!formData.din) {
+      alert("Please enter DIN number.");
+      return;
+    }
+    if (!formData.fullName) {
+      alert("Please enter full name.");
+      return;
+    }
     if (!formData.email) {
       alert("Please enter a valid email address.");
       return;
     }
+    if (!formData.boardMember || !formData.keyPersonnel || !formData.gender) {
+      alert("Please fill all required selections.");
+      return;
+    }
 
-    const templateParams = {
-      to_email: formData.email,
-      full_name: formData.fullName,
-      designation: formData.designation,
-      gender: formData.gender,
-      din: formData.din,
-      age: formData.age,
-      nationality: formData.nationality,
-      mobile: formData.mobile
-    };
+    if (!isFetched) {
+      // Register user: save to localStorage and reset form
+      const users =
+        JSON.parse(localStorage.getItem("users")) && Array.isArray(JSON.parse(localStorage.getItem("users")))
+          ? JSON.parse(localStorage.getItem("users"))
+          : [];
 
-    emailjs
-      .send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        templateParams,
-        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
-      )
-      .then(
-        (response) => {
-          console.log("SUCCESS!", response.status, response.text);
-          alert("User registered and email sent successfully!");
-        },
-        (error) => {
-          console.error("FAILED...", error);
-          alert("Registration succeeded but failed to send email.");
-        }
-      );
+      const existingUserIndex = users.findIndex((u) => u.din === formData.din);
+      if (existingUserIndex !== -1) {
+        alert("User with this DIN already registered.");
+        return;
+      }
+
+      users.push(formData);
+      localStorage.setItem("users", JSON.stringify(users));
+      alert("User registered successfully!");
+
+      setFormData({
+        boardMember: "",
+        keyPersonnel: "",
+        designation: "",
+        gender: "",
+        din: "",
+        fullName: "",
+        age: "",
+        nationality: "",
+        email: "",
+        mobile: ""
+      });
+    } else {
+      // Send email notification
+      const templateParams = {
+        to_email: formData.email,
+        full_name: formData.fullName,
+        designation: formData.designation,
+        gender: formData.gender,
+        din: formData.din,
+        age: formData.age,
+        nationality: formData.nationality,
+        mobile: formData.mobile,
+        board_member: formData.boardMember,
+        key_personnel: formData.keyPersonnel
+      };
+
+      emailjs
+        .send(
+          process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
+          process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+          templateParams,
+          process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
+        )
+        .then(
+          (response) => {
+            console.log("SUCCESS!", response.status, response.text);
+            alert("Email notification sent successfully!");
+            setIsFetched(false);
+            setFormData({
+              boardMember: "",
+              keyPersonnel: "",
+              designation: "",
+              gender: "",
+              din: "",
+              fullName: "",
+              age: "",
+              nationality: "",
+              email: "",
+              mobile: ""
+            });
+          },
+          (error) => {
+            console.error("FAILED...", error);
+            alert("Failed to send email.");
+          }
+        );
+    }
+  };
+
+  const handleCancel = () => {
+    setIsFetched(false);
+    setFormData({
+      boardMember: "",
+      keyPersonnel: "",
+      designation: "",
+      gender: "",
+      din: "",
+      fullName: "",
+      age: "",
+      nationality: "",
+      email: "",
+      mobile: ""
+    });
   };
 
   return (
@@ -113,12 +220,15 @@ export default function AddUserForm() {
               {["Yes", "No"].map((opt) => (
                 <button
                   key={opt}
-                  disabled
-                  className={`px-4 py-1 rounded cursor-not-allowed ${
+                  onClick={() => {
+                    if (!isFetched) setFormData((prev) => ({ ...prev, boardMember: opt }));
+                  }}
+                  className={`px-4 py-1 rounded cursor-pointer ${
                     formData.boardMember === opt
                       ? "bg-black text-white"
                       : "bg-gray-300 text-black"
                   }`}
+                  disabled={isFetched}
                 >
                   {opt}
                 </button>
@@ -131,12 +241,15 @@ export default function AddUserForm() {
               {["Yes", "No"].map((opt) => (
                 <button
                   key={opt}
-                  disabled
-                  className={`px-4 py-1 rounded cursor-not-allowed ${
+                  onClick={() => {
+                    if (!isFetched) setFormData((prev) => ({ ...prev, keyPersonnel: opt }));
+                  }}
+                  className={`px-4 py-1 rounded cursor-pointer ${
                     formData.keyPersonnel === opt
                       ? "bg-black text-white"
                       : "bg-gray-300 text-black"
                   }`}
+                  disabled={isFetched}
                 >
                   {opt}
                 </button>
@@ -152,7 +265,8 @@ export default function AddUserForm() {
                 placeholder="Designation"
                 className="bg-gray-300 text-black p-2 rounded"
                 value={formData.designation}
-                readOnly
+                onChange={handleChange}
+                disabled={isFetched}
               />
 
               <div className="col-span-2 flex gap-2 items-center">
@@ -160,12 +274,15 @@ export default function AddUserForm() {
                 {["Male", "Female", "Prefer Not to say"].map((opt) => (
                   <button
                     key={opt}
-                    disabled
-                    className={`px-4 py-1 rounded cursor-not-allowed ${
+                    onClick={() => {
+                      if (!isFetched) setFormData((prev) => ({ ...prev, gender: opt }));
+                    }}
+                    className={`px-4 py-1 rounded cursor-pointer ${
                       formData.gender === opt
                         ? "bg-black text-white"
                         : "bg-gray-300 text-black"
                     }`}
+                    disabled={isFetched}
                   >
                     {opt}
                   </button>
@@ -179,10 +296,12 @@ export default function AddUserForm() {
                   className="bg-gray-300 text-black p-2 rounded hover:bg-gray-800 hover:text-white transition-colors"
                   value={formData.din}
                   onChange={handleChange}
+                  disabled={isFetched}
                 />
                 <button
                   onClick={handleFetch}
                   className="bg-orange-400 text-black px-4 rounded hover:bg-orange-500 hover:text-white transition-colors cursor-pointer"
+                  disabled={isFetched}
                 >
                   FETCH
                 </button>
@@ -193,21 +312,24 @@ export default function AddUserForm() {
                 placeholder="Full Name"
                 className="bg-gray-300 text-black p-2 rounded"
                 value={formData.fullName}
-                readOnly
+                onChange={handleChange}
+                disabled={isFetched}
               />
               <input
                 name="age"
                 placeholder="Age"
                 className="bg-gray-300 text-black p-2 rounded"
                 value={formData.age}
-                readOnly
+                onChange={handleChange}
+                disabled={isFetched}
               />
               <input
                 name="nationality"
                 placeholder="Nationality"
                 className="bg-gray-300 text-black p-2 rounded"
                 value={formData.nationality}
-                readOnly
+                onChange={handleChange}
+                disabled={isFetched}
               />
             </div>
           </div>
@@ -220,14 +342,16 @@ export default function AddUserForm() {
                 placeholder="Primary Email ID (Used to login)"
                 className="bg-gray-300 text-black p-2 rounded"
                 value={formData.email}
-                readOnly
+                onChange={handleChange}
+                disabled={isFetched}
               />
               <input
                 name="mobile"
                 placeholder="Mobile No. (Used to Login)"
                 className="bg-gray-300 text-black p-2 rounded"
                 value={formData.mobile}
-                readOnly
+                onChange={handleChange}
+                disabled={isFetched}
               />
             </div>
           </div>
@@ -237,9 +361,12 @@ export default function AddUserForm() {
               onClick={handleSubmit}
               className="bg-orange-400 text-black px-8 py-2 rounded hover:bg-orange-500 hover:text-white transition-colors cursor-pointer"
             >
-              Add User
+              {isFetched ? "Send Email" : "Add User"}
             </button>
-            <button className="bg-orange-400 text-black px-8 py-2 rounded hover:bg-orange-500 hover:text-white transition-colors cursor-pointer">
+            <button
+              onClick={handleCancel}
+              className="bg-orange-400 text-black px-8 py-2 rounded hover:bg-orange-500 hover:text-white transition-colors cursor-pointer"
+            >
               Cancel
             </button>
           </div>
